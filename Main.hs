@@ -3,6 +3,7 @@
      --resolver lts-5.10
      --install-ghc
      runghc
+     --package unordered-containers
      --package yesod
      --package persistent-sqlite
  -}
@@ -22,7 +23,7 @@
 import Control.Monad.Trans.Resource (runResourceT)
 import Control.Monad.Logger (runStderrLoggingT)
 import Data.Aeson (FromJSON, ToJSON, decode, encode)
-import Data.Either (lefts)
+import qualified Data.HashMap.Strict as HM
 import Data.Text           (Text)
 import Data.Time.Clock
 import Database.Persist.Sqlite
@@ -69,7 +70,17 @@ instance ToJSON Product
 getStoreR :: StoreId -> Handler Value
 getStoreR storeId = do
     store <- runDB $ get404 storeId
-    return $ toJSON store
+
+    products <- runDB $ selectList [StoreId ==. storeId] []
+    let productsJson = [entityIdToJSON (Entity k r) | Entity k r <- products]
+
+    let storeJson = entityIdToJSON (Entity storeId store)
+
+    -- Inject productsJson under "products" property
+    let storeJsonWithProducts = HM.insert "products" productsJson storeJson
+
+
+    return $ object ["data" .= storeJsonWithProducts]
 
 
 openConnectionCount :: Int
