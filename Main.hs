@@ -28,6 +28,8 @@ import Data.Text           (Text)
 import Data.Time.Clock
 import Database.Persist.Sqlite
 import GHC.Generics (Generic)
+import GHC.Exts
+import qualified Data.Vector as V
 import Network.HTTP.Types
 import Yesod
 
@@ -71,17 +73,16 @@ getStoreR :: StoreId -> Handler Value
 getStoreR storeId = do
     store <- runDB $ get404 storeId
 
-    products <- runDB $ selectList [StoreId ==. storeId] []
+    let storeJson = entityIdToJSON (Entity storeId store)
+    let (Object storeHashMap) = storeJson
+
+    products <- runDB $ selectList [ProductStore ==. storeId] [] :: Handler [Entity Product]
     let productsJson = [entityIdToJSON (Entity k r) | Entity k r <- products]
 
-    let storeJson = entityIdToJSON (Entity storeId store)
+    let productsValue = Array (V.fromList productsJson)
 
-    -- Inject productsJson under "products" property
-    let storeJsonWithProducts = HM.insert "products" productsJson storeJson
-
-
-    return $ object ["data" .= storeJsonWithProducts]
-
+    let storeWithProducts = HM.insert "products" productsValue storeHashMap
+    return $ object ["data" .= storeWithProducts]
 
 openConnectionCount :: Int
 openConnectionCount = 10
