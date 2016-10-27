@@ -46,7 +46,7 @@ Product
 
 
 mkYesod "App" [parseRoutes|
-/ StoreR GET
+/#StoreId StoreR GET
 |]
 
 instance Yesod App
@@ -61,12 +61,13 @@ instance YesodPersist App where
 instance RenderMessage App FormMessage where
     renderMessage _ _ = defaultFormMessage
 
-instance FromJSON Item
-instance ToJSON Item
+
+instance ToJSON Store
+instance ToJSON Product
 
 
 getStoreR :: StoreId -> Handler Value
-getApiItemR storeId = do
+getStoreR storeId = do
     store <- runDB $ get404 storeId
     return $ toJSON store
 
@@ -81,5 +82,5 @@ main = runStderrLoggingT $ withSqlitePool "test.db3" openConnectionCount $ \pool
         store <- insert $ Store "Store1"
         _ <- insert $ Product "Product1" 10 store
         _ <- insert $ Product "Product2" 50 store
-        _ <- insert $ Product "Product3" 100 store
+        insert $ Product "Product3" 100 store
     warp 3000 $ App pool
